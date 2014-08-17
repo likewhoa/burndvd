@@ -1,20 +1,27 @@
-#!/bin/sh
+#!/bin/bash
 
-ARGS=3                
-E_PARAM_ERR=65        
-
-Param_Error ()        
-{
+die() {
   echo "Usage: `basename $0` /path/to/dvd /path/to/dvd.iso DVDTITLE"
-  exit $E_PARAM_ERR
-}  
+  exit 1
+}
 
-if [ $# -ne "$ARGS" ] 
-then
-  Param_Error
-fi  
+if [ $# -ne "3" ]; then
+  die
+fi
 
-dvdbackup -n $3 -M -i /dev/hda -o $1 && mkisofs -dvd-video -o $2 $1/$3 && echo $1/$3 | xargs rm -rf && echo "DVDShrink ISO Ready? set path"; read a
-echo $2 | xargs rm; mkisofs -dvd-video -o $2 $a && echo $a | xargs rm -rf && eject /dev/hda && cdrecord-ProDVD -v -dao dev=/dev/hda driveropts=burnfree $2; echo "done with ripping"
-echo are we done?; read b; rm $2; echo done
+dvdbackup -n $3 -M -i /dev/hda -o $1 || die
 
+mkisofs -dvd-video -o $2 $1/$3 || die
+
+echo $1/$3 | xargs rm -rf || die
+echo "DVDShrink ISO Ready? set path"; read path
+rm -v "$2"
+
+mkisofs -dvd-video -o $2 $path || die
+
+rm -rf "$path" || die
+
+eject /dev/hda || die
+cdrecord-ProDVD -v -dao dev=/dev/hda driveropts=burnfree $2 || die
+
+echo "Done with ripping & burning." && rm "$2"
